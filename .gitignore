@@ -30,6 +30,9 @@ venv
 ~*
 *~
 
+.antlr
+/.antlr*
+
 node_modules/
 /build/
 /dist/
