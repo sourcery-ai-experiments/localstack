@@ -32,6 +32,7 @@ venv
 
 .antlr
 /.antlr*
+localstack/services/stepfunctions/asl/antlr/runtime/
 
 node_modules/
 /build/
