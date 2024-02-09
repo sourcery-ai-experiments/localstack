@@ -10,9 +10,13 @@ MAIN_CONTAINER_NAME ?= localstack-main
 
 # Define default ANTLR4 tool dump directory and path.
 ANTLR4_DIR ?= .antlr
-ANTLR4_JAR ?= $(ANTLR4_DIR)/antlr-4.13.1-complete.jar
-# Define the download path for ANTLR4 parser generator.
-ANTLR4_URL ?= https://www.antlr.org/download/antlr-4.13.1-complete.jar
+ANTLR4_JAR ?= $(ANTLR4_DIR)/antlr-complete.jar
+# Define the fallback antlr4 version if latest cannot be fetched.
+ANTLR4_FALLBACK_VERSION ?= 4.13.1
+# Define the url where to obtain the json specification for latest version.
+ANTLR4_LATEST_SPEC_URL ?= https://api.github.com/repos/antlr/antlr4/releases/latest
+# Define the base download url for the ANTLR4 tool.
+ANTLR4_DOWNLOAD_URL ?= https://www.antlr.org/download/
 # Define the default input and output directory for ANTLR4 grammars.
 ANTLR4_SRC_DIR ?= localstack/services/stepfunctions/asl/antlr
 ANTLR4_TARGET_DIR ?= $(ANTLR4_SRC_DIR)/runtime
@@ -82,9 +86,21 @@ install-s3: venv     ## Install dependencies for the localstack runtime for s3-o
 
 install-dev-antlr4:        ## Install the dependencies for compiling the ANTLR4 project
 	@mkdir -p $(ANTLR4_DIR)
-	@curl -o $(ANTLR4_JAR) $(ANTLR4_URL)
+	@echo "Fetching the latest version of ANTLR4..."
+	@VERSION=$$(curl -s $(ANTLR4_LATEST_SPEC_URL) | grep '"name":' | cut -d '"' -f 4); \
+	if [ -z "$${VERSION}" ]; then \
+		echo "Failed to fetch the latest version of ANTLR4. Defaulting to version $(ANTLR_DEFAULT_VERSION)."; \
+		VERSION=$(ANTLR_DEFAULT_VERSION); \
+	else \
+		echo "Fetched latest ANTLR4 version: $${VERSION}"; \
+	fi; \
+	echo "Using ANTLR4 version $${VERSION}..."; \
+	ANTLR4_URL="$(ANTLR4_DOWNLOAD_URL)antlr-$${VERSION}-complete.jar"; \
+	echo "Downloading ANTLR4 tool JAR from $${ANTLR4_URL}"; \
+	curl -o $(ANTLR4_JAR) $${ANTLR4_URL}; \
+	echo "Download complete."
 
-install: install-dev entrypoints  ## Install full dependencies into venv
+install: install-dev install-dev-antlr4 build-dev-antlr4 entrypoints  ## Install full dependencies into venv
 
 entrypoints:              ## Run setup.py develop to build entry points
 	$(VENV_RUN); python setup.py plugins egg_info
@@ -281,7 +297,7 @@ format-modified:          ## Run ruff and black to format only modified code
 init-precommit:    		  ## install te pre-commit hook into your local git repository
 	($(VENV_RUN); pre-commit install)
 
-clean:             		  ## Clean up (npm dependencies, downloaded infrastructure code, compiled Java classes)
+clean: clean-dev-antlr4             		  ## Clean up (npm dependencies, downloaded infrastructure code, compiled Java classes)
 	rm -rf .filesystem
 	rm -rf build/
 	rm -rf dist/
@@ -293,6 +309,7 @@ clean-dist:				  ## Clean up python distribution directories
 	rm -rf *.egg-info
 
 clean-dev-antlr4:        ## Clean up the ANTLR4 project directory.
-	@rm -rf $(ANTLR4_TARGET_DIR)
+	rm -rf $(ANTLR4_TARGET_DIR)
+	rm -rf $(ANTLR4_DIR)
 
 .PHONY: usage freeze install-basic install-runtime install-test install-dev install entrypoints dist publish coveralls start docker-save-image docker-build docker-build-multiarch docker-push-master docker-create-push-manifests docker-run-tests docker-run docker-mount-run docker-cp-coverage test test-coverage test-docker test-docker-mount test-docker-mount-code lint lint-modified format format-modified init-precommit clean clean-dist pip-tools upgrade-pinned-dependencies
