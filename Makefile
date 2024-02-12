@@ -10,13 +10,9 @@ MAIN_CONTAINER_NAME ?= localstack-main
 
 # Define default ANTLR4 tool dump directory and path.
 ANTLR4_DIR ?= .antlr
-ANTLR4_JAR ?= $(ANTLR4_DIR)/antlr-complete.jar
-# Define the fallback antlr4 version if latest cannot be fetched.
-ANTLR4_FALLBACK_VERSION ?= 4.13.1
-# Define the url where to obtain the json specification for latest version.
-ANTLR4_LATEST_SPEC_URL ?= https://api.github.com/repos/antlr/antlr4/releases/latest
-# Define the base download url for the ANTLR4 tool.
-ANTLR4_DOWNLOAD_URL ?= https://www.antlr.org/download/
+ANTLR4_JAR ?= $(ANTLR4_DIR)/antlr-4.13.1-complete.jar
+# Define the download path for ANTLR4 parser generator.
+ANTLR4_URL ?= https://www.antlr.org/download/antlr-4.13.1-complete.jar
 # Define the default input and output directory for ANTLR4 grammars.
 ANTLR4_SRC_DIR ?= localstack/services/stepfunctions/asl/antlr
 ANTLR4_TARGET_DIR ?= $(ANTLR4_SRC_DIR)/runtime
@@ -86,21 +82,9 @@ install-s3: venv     ## Install dependencies for the localstack runtime for s3-o
 
 install-dev-antlr4:        ## Install the dependencies for compiling the ANTLR4 project
 	@mkdir -p $(ANTLR4_DIR)
-	@echo "Fetching the latest version of ANTLR4..."
-	@VERSION=$$(curl -s $(ANTLR4_LATEST_SPEC_URL) | grep '"name":' | cut -d '"' -f 4); \
-	if [ -z "$${VERSION}" ]; then \
-		echo "Failed to fetch the latest version of ANTLR4. Defaulting to version $(ANTLR_DEFAULT_VERSION)."; \
-		VERSION=$(ANTLR_DEFAULT_VERSION); \
-	else \
-		echo "Fetched latest ANTLR4 version: $${VERSION}"; \
-	fi; \
-	echo "Using ANTLR4 version $${VERSION}..."; \
-	ANTLR4_URL="$(ANTLR4_DOWNLOAD_URL)antlr-$${VERSION}-complete.jar"; \
-	echo "Downloading ANTLR4 tool JAR from $${ANTLR4_URL}"; \
-	curl -o $(ANTLR4_JAR) $${ANTLR4_URL}; \
-	echo "Download complete."
+	@curl -o $(ANTLR4_JAR) $(ANTLR4_URL)
 
-install: install-dev install-dev-antlr4 build-dev-antlr4 entrypoints  ## Install full dependencies into venv
+install: install-dev entrypoints  ## Install full dependencies into venv
 
 entrypoints:              ## Run setup.py develop to build entry points
 	$(VENV_RUN); python setup.py plugins egg_info
@@ -277,22 +261,22 @@ test-docker-mount-code:
 		DOCKER_FLAGS="$(DOCKER_FLAGS) --entrypoint= -v `pwd`/localstack/config.py:/opt/code/localstack/localstack/config.py -v `pwd`/localstack/constants.py:/opt/code/localstack/localstack/constants.py -v `pwd`/localstack/utils:/opt/code/localstack/localstack/utils -v `pwd`/localstack/services:/opt/code/localstack/localstack/services -v `pwd`/localstack/aws:/opt/code/localstack/localstack/aws -v `pwd`/Makefile:/opt/code/localstack/Makefile -v $$PACKAGES_DIR/moto:/opt/code/localstack/.venv/lib/python3.11/site-packages/moto/ -e TEST_PATH=\\'$(TEST_PATH)\\' -e LAMBDA_JAVA_OPTS=$(LAMBDA_JAVA_OPTS) $(ENTRYPOINT)" CMD="make test" make docker-run
 
 lint:              		  ## Run code linter to check code style, check if formatter would make changes and check if dependency pins need to be updated
-	($(VENV_RUN); python -m ruff check --show-source . && python -m black --check .)
+	($(VENV_RUN); python -m ruff check --output-format=full . && python -m black --check .)
 	$(VENV_RUN); pre-commit run check-pinned-deps-for-needed-upgrade --files setup.cfg # run pre-commit hook manually here to ensure that this check runs in CI as well
 
 
 lint-modified:     		  ## Run code linter to check code style, check if formatter would make changes on modified files, and check if dependency pins need to be updated because of modified files
-	($(VENV_RUN); python -m ruff check --show-source `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs` && python -m black --check `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs`)
+	($(VENV_RUN); python -m ruff check --output-format=full `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs` && python -m black --check `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs`)
 	$(VENV_RUN); pre-commit run check-pinned-deps-for-needed-upgrade --files $(git diff master --name-only) # run pre-commit hook manually here to ensure that this check runs in CI as well
 
 check-aws-markers:     		  ## Lightweight check to ensure all AWS tests have proper compatibilty markers set
 	($(VENV_RUN); python -m pytest --co tests/aws/)
 
 format:            		  ## Run ruff and black to format the whole codebase
-	($(VENV_RUN); python -m ruff check --show-source --fix .; python -m black .)
+	($(VENV_RUN); python -m ruff check --output-format=full --fix .; python -m black .)
 
 format-modified:          ## Run ruff and black to format only modified code
-	($(VENV_RUN); python -m ruff check --show-source --fix `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs`; python -m black `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs` )
+	($(VENV_RUN); python -m ruff check --output-format=full --fix `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs`; python -m black `git diff --diff-filter=d --name-only HEAD | grep '\.py$$' | xargs` )
 
 init-precommit:    		  ## install te pre-commit hook into your local git repository
 	($(VENV_RUN); pre-commit install)

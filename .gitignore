@@ -32,7 +32,6 @@ venv
 
 .antlr
 /.antlr*
-localstack/services/stepfunctions/asl/antlr/runtime/
 
 node_modules/
 /build/
@@ -55,8 +54,6 @@ requirements.copy.txt
 *.tfstate.*
 *tfplan
 *.terraform.lock.hcl
-
-.python-version
 
 venv
 api_states
