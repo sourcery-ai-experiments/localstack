@@ -281,7 +281,7 @@ format-modified:          ## Run ruff and black to format only modified code
 init-precommit:    		  ## install te pre-commit hook into your local git repository
 	($(VENV_RUN); pre-commit install)
 
-clean:              		  ## Clean up (npm dependencies, downloaded infrastructure code, compiled Java classes)
+clean:             		  ## Clean up (npm dependencies, downloaded infrastructure code, compiled Java classes)
 	rm -rf .filesystem
 	rm -rf build/
 	rm -rf dist/
