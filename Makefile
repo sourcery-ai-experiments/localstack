@@ -86,8 +86,8 @@ install-dev-antlr4:        ## Install the dependencies for compiling the ANTLR4 
 
 install: install-dev entrypoints  ## Install full dependencies into venv
 
-entrypoints:              ## Run setup.py develop to build entry points
-	$(VENV_RUN); python setup.py plugins egg_info
+entrypoints:              ## Run plux to build entry points
+	$(VENV_RUN); python -m plux entrypoints
 	@# make sure that the entrypoints were correctly created and are non-empty
 	@test -s localstack_core.egg-info/entry_points.txt || (echo "Entrypoints were not correctly created! Aborting!" && exit 1)
 
